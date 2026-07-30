@@ -3,34 +3,28 @@ import {
     createContext,
     useContext,
     useEffect,
+    useMemo,
     useRef,
     useState
 
 } from 'react';
 
-import { useSocket }
+import { useSocket } from '../SocketContext';
 
-from '../SocketContext/SocketContext';
+import MediaSessionManager from '../../webrtc/session/MediaSessionManager';
 
-import EVENTS
+import MediaManager from '../../webrtc/managers/MediaManager';
+import PeerConnectionManager from '../../webrtc/managers/PeerConnectionManager';
+import ScreenShareManager from '../../webrtc/managers/ScreenShareManager';
+import RecordingManager from '../../webrtc/managers/RecordingManager';
+import DeviceManager from '../../webrtc/managers/DeviceManager';
 
-from '../../constants/events';
+import usePeerEvents from '../../webrtc/hooks/usePeerEvents';
 
-import mediaSessionManager
+import EVENTS from '../../constants/events';
+import usePeerEvents from '../../webrtc/hooks/usePeerEvents';
 
-from '../../webrtc/session';
-
-import MediaManager
-
-from '../../webrtc/managers/MediaManager';
-
-import PeerConnectionManager
-
-from '../../webrtc/managers/PeerConnectionManager';
-
-const WebRTCContext =
-
-createContext(null);
+const WebRTCContext = createContext(null);
 
 export const WebRTCProvider = ({
 
@@ -40,43 +34,19 @@ export const WebRTCProvider = ({
 
     const {
 
-        socket,
-
-        connected
+        socket
 
     } = useSocket();
 
-    const mediaSessionRef =
+    const sessionRef = useRef(null);
 
-        useRef(null);
+    const mediaManager = useRef(null);
+    const peerManager = useRef(null);
+    const screenManager = useRef(null);
+    const recordingManager = useRef(null);
+    const deviceManager = useRef(null);
 
-    const mediaManagerRef =
-
-        useRef(null);
-
-    const peerManagerRef =
-
-        useRef(null);
-
-    const joinedRef =
-
-        useRef(false);
-
-    const [
-
-        initialized,
-
-        setInitialized
-
-    ] = useState(false);
-
-    const [
-
-        participants,
-
-        setParticipants
-
-    ] = useState([]);
+    const peerEvents = useRef(null);
 
     const [
 
@@ -85,6 +55,439 @@ export const WebRTCProvider = ({
         setLocalStream
 
     ] = useState(null);
+
+    const [
+
+        remoteStreams,
+
+        setRemoteStreams
+
+    ] = useState(new Map());
+
+    const [
+
+        devices,
+
+        setDevices
+
+    ] = useState({
+
+        cameras: [],
+
+        microphones: [],
+
+        speakers: []
+
+    });
+
+    const [
+
+        sharingScreen,
+
+        setSharingScreen
+
+    ] = useState(false);
+
+    const [
+
+        recording,
+
+        setRecording
+
+    ] = useState(false);
+
+
+useEffect(() => {
+
+    if (
+
+        !socket ||
+
+        !peerManager.current
+
+    ) {
+
+        return;
+
+    }
+
+    const offerHandler = async payload => {
+
+        const answer =
+
+            await peerManager.current.createAnswer(
+
+                payload.from,
+
+                payload.sdp
+
+            );
+
+        socket.emit(
+
+            EVENTS.ANSWER,
+
+            {
+
+                to: payload.from,
+
+                sdp: answer
+
+            }
+
+        );
+
+    };
+
+    const answerHandler = async payload => {
+
+        await peerManager.current.receiveAnswer(
+
+            payload.from,
+
+            payload.sdp
+
+        );
+
+    };
+
+    const iceHandler = async payload => {
+
+        await peerManager.current.addIceCandidate(
+
+            payload.from,
+
+            payload.candidate
+
+        );
+
+    };
+
+    socket.on(
+
+        EVENTS.OFFER,
+
+        offerHandler
+
+    );
+
+    socket.on(
+
+        EVENTS.ANSWER,
+
+        answerHandler
+
+    );
+
+    socket.on(
+
+        EVENTS.ICE_CANDIDATE,
+
+        iceHandler
+
+    );
+
+    return () => {
+
+        socket.off(
+
+            EVENTS.OFFER,
+
+            offerHandler
+
+        );
+
+        socket.off(
+
+            EVENTS.ANSWER,
+
+            answerHandler
+
+        );
+
+        socket.off(
+
+            EVENTS.ICE_CANDIDATE,
+
+            iceHandler
+
+        );
+
+    };
+
+}, [
+
+    socket
+
+]);
+
+    /*
+====================================
+Initialize
+====================================
+*/
+
+const initialize = async (
+
+    sessionId
+
+) => {
+
+    if (
+
+        sessionRef.current
+
+    ) {
+
+        return;
+
+    }
+
+    const session =
+
+        MediaSessionManager.get(
+
+            sessionId
+
+        );
+
+    sessionRef.current =
+
+        session;
+
+    mediaManager.current =
+
+        new MediaManager(
+
+            session
+
+        );
+
+    peerManager.current =
+
+        new PeerConnectionManager(
+
+            session
+
+        );
+
+    screenManager.current =
+
+        new ScreenShareManager(
+
+            session,
+
+            peerManager.current
+
+        );
+
+    recordingManager.current =
+
+        new RecordingManager(
+
+            session
+
+        );
+
+    deviceManager.current =
+
+        new DeviceManager();
+
+    peerManager.current.on(
+
+        'onRemoteStream',
+
+        (
+
+            membershipId,
+
+            stream
+
+        ) => {
+
+            setRemoteStreams(
+
+                new Map(
+
+                    session.remoteStreams
+
+                )
+
+            );
+
+        }
+
+    );
+
+    peerManager.current.on(
+
+        'onIceCandidate',
+
+        (
+
+            membershipId,
+
+            candidate
+
+        ) => {
+
+            socket.emit(
+
+                EVENTS.ICE_CANDIDATE,
+
+                {
+
+                    to:
+
+                        membershipId,
+
+                    candidate
+
+                }
+
+            );
+
+        }
+
+    );
+
+   
+    const stream =
+
+        await mediaManager
+
+            .current
+
+            .initialize();
+
+    setLocalStream(
+
+        stream
+
+    );
+
+    const allDevices =
+
+        await deviceManager
+
+            .current
+
+            .getDevices();
+
+    setDevices(
+
+        allDevices
+
+    );
+
+    socket.emit(
+
+        EVENTS.JOIN_PEER
+
+    );
+
+};
+
+/*
+====================================
+Start Recording
+====================================
+*/
+
+const startRecording = () => {
+
+    if (
+
+        !recordingManager.current ||
+
+        recording
+
+    ) {
+
+        return;
+
+    }
+
+    recordingManager.current.start();
+
+    setRecording(
+
+        true
+
+    );
+
+};
+
+/*
+====================================
+Stop Recording
+====================================
+*/
+
+const stopRecording = async () => {
+
+    if (
+
+        !recordingManager.current ||
+
+        !recording
+
+    ) {
+
+        return;
+
+    }
+
+    const blob =
+
+        await recordingManager.current.stop();
+
+    setRecording(
+
+        false
+
+    );
+
+    if (!blob) {
+
+        return;
+
+    }
+
+    const url =
+
+        URL.createObjectURL(
+
+            blob
+
+        );
+
+    const a =
+
+        document.createElement(
+
+            'a'
+
+        );
+
+    a.href = url;
+
+    a.download =
+
+        `session-${Date.now()}.webm`;
+
+    a.click();
+
+    URL.revokeObjectURL(
+
+        url
+
+    );
+
+};
+
+
+
 
     /*
     ==================================

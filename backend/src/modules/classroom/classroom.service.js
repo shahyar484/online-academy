@@ -189,6 +189,50 @@ class ClassroomService {
 
     }
 
+    getParticipants(sessionId) {
+
+        return SessionManager.getParticipants(
+
+            sessionId
+
+        );
+
+    }
+
+    getHost(sessionId) {
+
+        return SessionManager.getHost(
+
+            sessionId
+
+        );
+
+    }
+
+    isParticipant(
+
+        sessionId,
+
+        membershipId
+
+    ) {
+
+        return SessionManager
+
+            .getParticipants(sessionId)
+
+            .some(
+
+                participant =>
+
+                    participant.membershipId ===
+
+                    membershipId
+
+            );
+
+    }
+
 }
 
 module.exports =

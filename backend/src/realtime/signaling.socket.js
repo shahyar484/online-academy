@@ -1,5 +1,8 @@
 const EVENTS = require('./events');
 
+const classroomService =
+require('./classroom.service');
+
 const signalingService =
 require('./signaling');
 
@@ -62,6 +65,38 @@ module.exports = io => {
                                 socket.id
 
                             );
+
+                        classroomService.join(
+
+                            sessionId,
+
+                            membershipId,
+
+                            socket.id
+
+                        );
+
+                        socket.join(
+
+                            `session:${sessionId}`
+
+                        );
+
+                        io.to(
+
+                            `session:${sessionId}`
+
+                        ).emit(
+
+                            EVENTS.PARTICIPANTS_UPDATED,
+
+                            classroomService.getParticipants(
+
+                                sessionId
+
+                            )
+
+                        );
 
                         socket.emit(
 
@@ -394,6 +429,30 @@ module.exports = io => {
                         sessionId,
 
                         membershipId
+
+                    );
+
+                    classroomService.leave(
+
+                        sessionId,
+
+                        membershipId
+
+                    );
+
+                    io.to(
+
+                        `session:${sessionId}`
+
+                    ).emit(
+
+                        EVENTS.PARTICIPANTS_UPDATED,
+
+                        classroomService.getParticipants(
+
+                            sessionId
+
+                        )
 
                     );
 

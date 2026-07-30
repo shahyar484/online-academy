@@ -4,19 +4,21 @@ class PeerConnectionManager {
 
     constructor(mediaSession) {
 
-        this.mediaSession = mediaSession;
+    this.mediaSession = mediaSession;
 
-        this.callbacks = {
+    this.pendingCandidates = new Map();
 
-            onIceCandidate: null,
+    this.callbacks = {
 
-            onRemoteStream: null,
+        onIceCandidate: null,
 
-            onConnectionStateChange: null
+        onRemoteStream: null,
 
-        };
+        onConnectionStateChange: null
 
-    }
+    };
+
+}
 
     /*
     ===================================
@@ -53,6 +55,20 @@ class PeerConnectionManager {
         const peer = new RTCPeerConnection(
             rtcConfig
         );
+
+        peer.oniceconnectionstatechange = () => {
+
+            if (
+
+                peer.iceConnectionState === 'failed'
+
+            ) {
+
+                peer.restartIce();
+
+            }
+
+        };
 
         const localStream =
             this.mediaSession.currentVideoStream;
@@ -171,6 +187,32 @@ class PeerConnectionManager {
 
         );
 
+        const pending =
+
+            this.pendingCandidates.get(
+
+                remoteMembershipId
+
+            ) || [];
+
+        pending.forEach(async candidate => {
+
+            try {
+
+                await peer.addIceCandidate(candidate);
+
+            }
+
+            catch {}
+
+        });
+
+        this.pendingCandidates.delete(
+
+            remoteMembershipId
+
+        );
+
         return peer;
 
     }
@@ -239,30 +281,85 @@ class PeerConnectionManager {
     ===================================
     */
 
-    async receiveAnswer(
+    /*
+===================================
+Receive Answer
+===================================
+*/
 
-        remoteMembershipId,
+async receiveAnswer(
 
-        answer
+            remoteMembershipId,
 
-    ) {
+            answer
 
-        const peer =
-            this.mediaSession.peerConnections.get(
-                remoteMembershipId
+        ) {
+
+            const peer =
+
+                this.mediaSession
+
+                    .peerConnections
+
+                    .get(remoteMembershipId);
+
+            if (!peer) {
+
+                return;
+
+            }
+
+            await peer.setRemoteDescription(
+
+                new RTCSessionDescription(
+
+                    answer
+
+                )
+
             );
 
-        if (!peer) {
+            const pending =
 
-            return;
+                this.pendingCandidates.get(
+
+                    remoteMembershipId
+
+                ) || [];
+
+            for (
+
+                const candidate
+
+                of pending
+
+            ) {
+
+                try {
+
+                    await peer.addIceCandidate(
+
+                        new RTCIceCandidate(
+
+                            candidate
+
+                        )
+
+                    );
+
+                }
+
+                catch {}
+
+            }
+
+            this.pendingCandidates.delete(
+
+                remoteMembershipId
+
+            );
 
         }
-
-        await peer.setRemoteDescription(
-            answer
-        );
-
-    }
 
     /*
     ===================================
@@ -270,30 +367,97 @@ class PeerConnectionManager {
     ===================================
     */
 
-    async addIceCandidate(
+    /*
+===================================
+ICE
+===================================
+*/
 
-        remoteMembershipId,
+async addIceCandidate(
 
-        candidate
+            remoteMembershipId,
 
-    ) {
+            candidate
 
-        const peer =
-            this.mediaSession.peerConnections.get(
-                remoteMembershipId
-            );
+        ) {
 
-        if (!peer) {
+            const peer =
 
-            return;
+                this.mediaSession
+
+                    .peerConnections
+
+                    .get(remoteMembershipId);
+
+            if (!peer) {
+
+                return;
+
+            }
+
+            if (
+
+                peer.remoteDescription
+
+            ) {
+
+                try {
+
+                    await peer.addIceCandidate(
+
+                        new RTCIceCandidate(
+
+                            candidate
+
+                        )
+
+                    );
+
+                }
+
+                catch {}
+
+            }
+
+            else {
+
+                if (
+
+                    !this.pendingCandidates.has(
+
+                        remoteMembershipId
+
+                    )
+
+                ) {
+
+                    this.pendingCandidates.set(
+
+                        remoteMembershipId,
+
+                        []
+
+                    );
+
+                }
+
+                this.pendingCandidates
+
+                    .get(
+
+                        remoteMembershipId
+
+                    )
+
+                    .push(
+
+                        candidate
+
+                    );
+
+            }
 
         }
-
-        await peer.addIceCandidate(
-            candidate
-        );
-
-    }
 
     /*
     ===================================
@@ -301,38 +465,85 @@ class PeerConnectionManager {
     ===================================
     */
 
-    replaceTrack(newTrack) {
+    /*
+===================================
+Replace Media Track
+===================================
+*/
 
-        this.mediaSession.peerConnections.forEach(
+replaceMediaTrack(track) {
 
-            peer => {
+    this.mediaSession.peerConnections.forEach(
 
-                const sender =
-                    peer
-                        .getSenders()
-                        .find(
+        peer => {
 
-                            sender =>
+            const sender =
+
+                peer
+
+                    .getSenders()
+
+                    .find(
+
+                        sender =>
 
                             sender.track &&
+
                             sender.track.kind ===
-                            newTrack.kind
 
-                        );
+                            track.kind
 
-                if (sender) {
-
-                    sender.replaceTrack(
-                        newTrack
                     );
 
-                }
+            if (
+
+                sender
+
+            ) {
+
+                sender.replaceTrack(
+
+                    track
+
+                );
 
             }
 
-        );
+        }
 
-    }
+    );
+
+}
+
+replaceCameraTrack(track) {
+
+    this.replaceMediaTrack(
+
+        track
+
+    );
+
+}
+
+replaceScreenTrack(track) {
+
+    this.replaceMediaTrack(
+
+        track
+
+    );
+
+}
+
+replaceMicrophoneTrack(track) {
+
+    this.replaceMediaTrack(
+
+        track
+
+    );
+
+}
 
     /*
     ===================================
@@ -371,23 +582,39 @@ class PeerConnectionManager {
     ===================================
     */
 
-    destroy() {
+    /*
+===================================
+Destroy
+===================================
+*/
 
-        this.mediaSession.peerConnections.forEach(
+destroy() {
 
-            peer => {
+    this.mediaSession.peerConnections.forEach(
 
-                peer.close();
+        peer => {
 
-            }
+            peer.ontrack = null;
 
-        );
+            peer.onicecandidate = null;
 
-        this.mediaSession.peerConnections.clear();
+            peer.onconnectionstatechange = null;
 
-        this.mediaSession.remoteStreams.clear();
+            peer.oniceconnectionstatechange = null;
 
-    }
+            peer.close();
+
+        }
+
+    );
+
+    this.mediaSession.peerConnections.clear();
+
+    this.mediaSession.remoteStreams.clear();
+
+    this.pendingCandidates.clear();
+
+}
 
 }
 
