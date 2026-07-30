@@ -1,0 +1,58 @@
+*,
+*::before,
+*::after{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+
+}
+
+html{
+
+    font-size:16px;
+
+}
+
+body{
+
+    min-height:100vh;
+
+}
+
+img{
+
+    display:block;
+    max-width:100%;
+
+}
+
+button{
+
+    border:none;
+    background:none;
+    cursor:pointer;
+
+}
+
+input,
+textarea,
+select{
+
+    font:inherit;
+
+}
+
+ul,
+ol{
+
+    list-style:none;
+
+}
+
+a{
+
+    text-decoration:none;
+    color:inherit;
+
+}
