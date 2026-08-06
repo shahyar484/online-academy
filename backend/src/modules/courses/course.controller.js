@@ -2,7 +2,7 @@ const slugify =
 require('../../utils/slugify');
 
 const randomCode =
-require('../../utils/randomCode');
+require('../../utils/generateOtp');
 
 const courseService =
 require('./course.service');
@@ -44,7 +44,7 @@ module.exports = {
                         slugify(data.title),
 
                     code:
-                        randomCode('CRS'),
+                        generateOtp('CRS'),
 
                     description:
                         data.description,

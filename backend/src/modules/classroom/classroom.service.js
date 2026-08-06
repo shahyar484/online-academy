@@ -29,6 +29,10 @@ class ClassroomService {
 
             );
 
+        if (!hostMembershipId) {
+            throw new AppError("Session not found", 404);
+        }
+
         const isHost =
 
             hostMembershipId === membershipId;

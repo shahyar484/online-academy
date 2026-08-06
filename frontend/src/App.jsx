@@ -1,31 +1,35 @@
-import {
+import { ToastContainer } from 'react-toastify';
 
-    SocketProvider
+import 'react-toastify/dist/ReactToastify.css';
 
-} from './context/SocketContext/SocketContext';
+import { SocketProvider } from './context/SocketContext/SocketContext';
+import { AuthProvider } from './context/AuthContext';
 
-import {
+import AppRoutes from './routes';
 
-    WebRTCProvider
+const App = () => {
 
-} from './context/WebRTCContext/WebRTCContext';
+    return (
 
-function App(){
+        // <SocketProvider>
 
-    return(
+            <AuthProvider>
 
-        <SocketProvider>
+                <AppRoutes />
 
-            <WebRTCProvider>
+                <ToastContainer
+                    position="top-center"
+                    autoClose={3000}
+                    rtl
+                    theme="light"
+                />
 
-                {/* Routes */}
+            </AuthProvider>
 
-            </WebRTCProvider>
-
-        </SocketProvider>
+        // </SocketProvider>
 
     );
 
-}
+};
 
 export default App;

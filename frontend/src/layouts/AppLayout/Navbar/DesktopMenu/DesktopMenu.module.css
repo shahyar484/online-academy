@@ -1,0 +1,35 @@
+.menu {
+
+    display: flex;
+
+    flex-direction: row;
+
+    align-items: center;
+
+    gap: 32px;
+
+    flex: 1;
+
+    justify-content: center;
+
+}
+
+.menu a {
+
+    text-decoration: none;
+
+    color: white;
+
+    font-weight: 500;
+
+}
+
+@media (max-width: 900px) {
+
+    .menu {
+
+        display: none;
+
+    }
+
+}

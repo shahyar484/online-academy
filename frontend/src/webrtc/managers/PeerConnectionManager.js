@@ -20,6 +20,160 @@ class PeerConnectionManager {
 
 }
 
+attachLocalTracks(peer) {
+
+    const localStream =
+        this.mediaSession.currentVideoStream;
+
+    if (!localStream) {
+
+        return;
+
+    }
+
+    localStream
+        .getTracks()
+        .forEach(track => {
+
+            peer.addTrack(
+                track,
+                localStream
+            );
+
+        });
+
+}
+
+registerPeerEvents(
+
+    peer,
+
+    remoteMembershipId
+
+) {
+
+    peer.ontrack = event => {
+
+        const stream =
+            event.streams[0];
+
+        this.mediaSession.remoteStreams.set(
+
+            remoteMembershipId,
+
+            stream
+
+        );
+
+        this.callbacks.onRemoteStream?.(
+
+            remoteMembershipId,
+
+            stream
+
+        );
+
+    };
+
+    peer.onicecandidate = event => {
+
+        if (!event.candidate) {
+
+            return;
+
+        }
+
+        this.callbacks.onIceCandidate?.(
+
+            remoteMembershipId,
+
+            event.candidate
+
+        );
+
+    };
+
+    peer.onconnectionstatechange = () => {
+
+        this.callbacks.onConnectionStateChange?.(
+
+            remoteMembershipId,
+
+            peer.connectionState
+
+        );
+
+    };
+
+    peer.oniceconnectionstatechange = () => {
+
+        if (
+
+            peer.iceConnectionState ===
+
+            'failed'
+
+        ) {
+
+            peer.restartIce?.();
+
+        }
+
+    };
+
+}
+
+async flushPendingCandidates(
+
+    peer,
+
+    remoteMembershipId
+
+) {
+
+    const pending =
+
+        this.pendingCandidates.get(
+
+            remoteMembershipId
+
+        ) || [];
+
+    for (
+
+        const candidate
+
+        of pending
+
+    ) {
+
+        try {
+
+            await peer.addIceCandidate(
+                new RTCIceCandidate(candidate)
+            );
+
+        }
+
+        catch (error) {
+
+            console.warn(error);
+
+        }
+
+    }
+
+    this.pendingCandidates.delete(
+
+        remoteMembershipId
+
+    );
+
+}
+
+
+
+
     /*
     ===================================
     Register Callbacks
@@ -32,190 +186,59 @@ class PeerConnectionManager {
 
     }
 
-    /*
-    ===================================
-    Create Peer
-    ===================================
-    */
+/*
+===================================
+Create Peer
+===================================
+*/
 
-    createPeer(remoteMembershipId) {
+async createPeer(remoteMembershipId) {
 
-        if (
-            this.mediaSession.peerConnections.has(
-                remoteMembershipId
-            )
-        ) {
+    if (!remoteMembershipId) {
 
-            return this.mediaSession.peerConnections.get(
-                remoteMembershipId
-            );
-
-        }
-
-        const peer = new RTCPeerConnection(
-            rtcConfig
+        throw new Error(
+            'remoteMembershipId is required'
         );
-
-        peer.oniceconnectionstatechange = () => {
-
-            if (
-
-                peer.iceConnectionState === 'failed'
-
-            ) {
-
-                peer.restartIce();
-
-            }
-
-        };
-
-        const localStream =
-            this.mediaSession.currentVideoStream;
-
-        if (localStream) {
-
-            localStream
-                .getTracks()
-                .forEach(track => {
-
-                    peer.addTrack(
-                        track,
-                        localStream
-                    );
-
-                });
-
-        }
-
-        /*
-        ==========================
-        Remote Stream
-        ==========================
-        */
-
-        peer.ontrack = event => {
-
-            const stream =
-                event.streams[0];
-
-            this.mediaSession.remoteStreams.set(
-
-                remoteMembershipId,
-
-                stream
-
-            );
-
-            if (
-                this.callbacks.onRemoteStream
-            ) {
-
-                this.callbacks.onRemoteStream(
-
-                    remoteMembershipId,
-
-                    stream
-
-                );
-
-            }
-
-        };
-
-        /*
-        ==========================
-        ICE
-        ==========================
-        */
-
-        peer.onicecandidate = event => {
-
-            if (
-                !event.candidate
-            ) {
-
-                return;
-
-            }
-
-            if (
-                this.callbacks.onIceCandidate
-            ) {
-
-                this.callbacks.onIceCandidate(
-
-                    remoteMembershipId,
-
-                    event.candidate
-
-                );
-
-            }
-
-        };
-
-        /*
-        ==========================
-        Connection State
-        ==========================
-        */
-
-        peer.onconnectionstatechange = () => {
-
-            if (
-                this.callbacks.onConnectionStateChange
-            ) {
-
-                this.callbacks.onConnectionStateChange(
-
-                    remoteMembershipId,
-
-                    peer.connectionState
-
-                );
-
-            }
-
-        };
-
-        this.mediaSession.peerConnections.set(
-
-            remoteMembershipId,
-
-            peer
-
-        );
-
-        const pending =
-
-            this.pendingCandidates.get(
-
-                remoteMembershipId
-
-            ) || [];
-
-        pending.forEach(async candidate => {
-
-            try {
-
-                await peer.addIceCandidate(candidate);
-
-            }
-
-            catch {}
-
-        });
-
-        this.pendingCandidates.delete(
-
-            remoteMembershipId
-
-        );
-
-        return peer;
 
     }
+
+    const existingPeer =
+        this.mediaSession.peerConnections.get(
+            remoteMembershipId
+        );
+
+    if (existingPeer) {
+
+        return existingPeer;
+
+    }
+
+    const peer = new RTCPeerConnection(
+        rtcConfig
+    );
+
+    this.attachLocalTracks(
+        peer
+    );
+
+    this.registerPeerEvents(
+        peer,
+        remoteMembershipId
+    );
+
+    this.mediaSession.peerConnections.set(
+        remoteMembershipId,
+        peer
+    );
+
+    await this.flushPendingCandidates(
+        peer,
+        remoteMembershipId
+    );
+
+    return peer;
+
+}
 
     /*
     ===================================
@@ -225,21 +248,29 @@ class PeerConnectionManager {
 
     async createOffer(remoteMembershipId) {
 
-        const peer =
-            this.createPeer(
-                remoteMembershipId
-            );
-
-        const offer =
-            await peer.createOffer();
-
-        await peer.setLocalDescription(
-            offer
+    const peer =
+        await this.createPeer(
+            remoteMembershipId
         );
 
-        return offer;
+    if (peer.signalingState !== 'stable') {
+
+        throw new Error(
+            `Cannot create offer while signalingState is "${peer.signalingState}"`
+        );
 
     }
+
+    const offer =
+        await peer.createOffer();
+
+    await peer.setLocalDescription(
+        offer
+    );
+
+    return offer;
+
+}
 
     /*
     ===================================
@@ -249,31 +280,41 @@ class PeerConnectionManager {
 
     async createAnswer(
 
-        remoteMembershipId,
+    remoteMembershipId,
 
-        remoteOffer
+    remoteOffer
 
-    ) {
+) {
 
-        const peer =
-            this.createPeer(
-                remoteMembershipId
-            );
-
-        await peer.setRemoteDescription(
-            remoteOffer
+    const peer =
+        await this.createPeer(
+            remoteMembershipId
         );
 
-        const answer =
-            await peer.createAnswer();
+    if (peer.signalingState !== 'stable') {
 
-        await peer.setLocalDescription(
-            answer
+        throw new Error(
+            `Cannot create answer while signalingState is "${peer.signalingState}"`
         );
-
-        return answer;
 
     }
+
+    await peer.setRemoteDescription(
+        new RTCSessionDescription(
+            remoteOffer
+        )
+    );
+
+    const answer =
+        await peer.createAnswer();
+
+    await peer.setLocalDescription(
+        answer
+    );
+
+    return answer;
+
+}
 
     /*
     ===================================
@@ -289,83 +330,38 @@ Receive Answer
 
 async receiveAnswer(
 
-            remoteMembershipId,
+    remoteMembershipId,
 
+    answer
+
+) {
+
+    const peer =
+        this.mediaSession
+            .peerConnections
+            .get(remoteMembershipId);
+
+    if (!peer) {
+
+        throw new Error(
+            `Peer not found for membership ${remoteMembershipId}`
+        );
+
+    }
+
+    await peer.setRemoteDescription(
+        new RTCSessionDescription(
             answer
+        )
+    );
 
-        ) {
+    await this.flushPendingCandidates(
+        peer,
+        remoteMembershipId
+    );
 
-            const peer =
+}
 
-                this.mediaSession
-
-                    .peerConnections
-
-                    .get(remoteMembershipId);
-
-            if (!peer) {
-
-                return;
-
-            }
-
-            await peer.setRemoteDescription(
-
-                new RTCSessionDescription(
-
-                    answer
-
-                )
-
-            );
-
-            const pending =
-
-                this.pendingCandidates.get(
-
-                    remoteMembershipId
-
-                ) || [];
-
-            for (
-
-                const candidate
-
-                of pending
-
-            ) {
-
-                try {
-
-                    await peer.addIceCandidate(
-
-                        new RTCIceCandidate(
-
-                            candidate
-
-                        )
-
-                    );
-
-                }
-
-                catch {}
-
-            }
-
-            this.pendingCandidates.delete(
-
-                remoteMembershipId
-
-            );
-
-        }
-
-    /*
-    ===================================
-    ICE
-    ===================================
-    */
 
     /*
 ===================================
@@ -375,95 +371,100 @@ ICE
 
 async addIceCandidate(
 
-            remoteMembershipId,
+    remoteMembershipId,
 
-            candidate
+    candidate
 
+) {
+
+    const peer =
+        this.mediaSession
+            .peerConnections
+            .get(remoteMembershipId);
+
+    /*
+    ==========================
+    Peer هنوز ساخته نشده
+    ==========================
+    */
+
+    if (!peer) {
+
+        if (
+            !this.pendingCandidates.has(
+                remoteMembershipId
+            )
         ) {
 
-            const peer =
-
-                this.mediaSession
-
-                    .peerConnections
-
-                    .get(remoteMembershipId);
-
-            if (!peer) {
-
-                return;
-
-            }
-
-            if (
-
-                peer.remoteDescription
-
-            ) {
-
-                try {
-
-                    await peer.addIceCandidate(
-
-                        new RTCIceCandidate(
-
-                            candidate
-
-                        )
-
-                    );
-
-                }
-
-                catch {}
-
-            }
-
-            else {
-
-                if (
-
-                    !this.pendingCandidates.has(
-
-                        remoteMembershipId
-
-                    )
-
-                ) {
-
-                    this.pendingCandidates.set(
-
-                        remoteMembershipId,
-
-                        []
-
-                    );
-
-                }
-
-                this.pendingCandidates
-
-                    .get(
-
-                        remoteMembershipId
-
-                    )
-
-                    .push(
-
-                        candidate
-
-                    );
-
-            }
+            this.pendingCandidates.set(
+                remoteMembershipId,
+                []
+            );
 
         }
 
+        this.pendingCandidates
+            .get(remoteMembershipId)
+            .push(candidate);
+
+        return;
+
+    }
+
     /*
-    ===================================
-    replaceTrack
-    ===================================
+    ==========================
+    هنوز RemoteDescription نداریم
+    ==========================
     */
+
+    if (!peer.remoteDescription) {
+
+        if (
+            !this.pendingCandidates.has(
+                remoteMembershipId
+            )
+        ) {
+
+            this.pendingCandidates.set(
+                remoteMembershipId,
+                []
+            );
+
+        }
+
+        this.pendingCandidates
+            .get(remoteMembershipId)
+            .push(candidate);
+
+        return;
+
+    }
+
+    /*
+    ==========================
+    Candidate را اضافه کن
+    ==========================
+    */
+
+    try {
+
+        await peer.addIceCandidate(
+            new RTCIceCandidate(candidate)
+        );
+
+    }
+
+    catch (error) {
+
+        console.warn(
+            'Failed to add ICE candidate:',
+            error
+        );
+
+    }
+
+}
+
 
     /*
 ===================================
@@ -473,16 +474,26 @@ Replace Media Track
 
 replaceMediaTrack(track) {
 
+    if (!track) {
+
+        return;
+
+    }
+
     this.mediaSession.peerConnections.forEach(
 
         peer => {
 
+            if (peer.connectionState === 'closed') {
+
+                return;
+
+            }
+
             const sender =
 
                 peer
-
                     .getSenders()
-
                     .find(
 
                         sender =>
@@ -495,19 +506,25 @@ replaceMediaTrack(track) {
 
                     );
 
-            if (
+            if (!sender) {
 
-                sender
-
-            ) {
-
-                sender.replaceTrack(
-
-                    track
-
-                );
+                return;
 
             }
+
+            sender
+                .replaceTrack(track)
+                .catch(error => {
+
+                    console.warn(
+
+                        `Failed to replace ${track.kind} track:`,
+
+                        error
+
+                    );
+
+                });
 
         }
 
@@ -553,34 +570,60 @@ replaceMicrophoneTrack(track) {
 
     removePeer(remoteMembershipId) {
 
-        const peer =
-            this.mediaSession.peerConnections.get(
-                remoteMembershipId
-            );
-
-        if (!peer) {
-
-            return;
-
-        }
-
-        peer.close();
-
-        this.mediaSession.peerConnections.delete(
+    const peer =
+        this.mediaSession.peerConnections.get(
             remoteMembershipId
         );
 
-        this.mediaSession.remoteStreams.delete(
-            remoteMembershipId
-        );
+    if (!peer) {
+
+        return;
 
     }
 
     /*
-    ===================================
-    Destroy
-    ===================================
+    ==========================
+    Remove Event Listeners
+    ==========================
     */
+
+    peer.ontrack = null;
+
+    peer.onicecandidate = null;
+
+    peer.onconnectionstatechange = null;
+
+    peer.oniceconnectionstatechange = null;
+
+    /*
+    ==========================
+    Close Peer
+    ==========================
+    */
+
+    peer.close();
+
+    /*
+    ==========================
+    Remove References
+    ==========================
+    */
+
+    this.mediaSession.peerConnections.delete(
+        remoteMembershipId
+    );
+
+    this.mediaSession.remoteStreams.delete(
+        remoteMembershipId
+    );
+
+    this.pendingCandidates.delete(
+        remoteMembershipId
+    );
+
+}
+
+ 
 
     /*
 ===================================
@@ -592,7 +635,13 @@ destroy() {
 
     this.mediaSession.peerConnections.forEach(
 
-        peer => {
+        (peer, remoteMembershipId) => {
+
+            /*
+            ==========================
+            Remove Event Listeners
+            ==========================
+            */
 
             peer.ontrack = null;
 
@@ -602,17 +651,37 @@ destroy() {
 
             peer.oniceconnectionstatechange = null;
 
+            /*
+            ==========================
+            Close Peer
+            ==========================
+            */
+
             peer.close();
 
         }
 
     );
 
+    /*
+    ==========================
+    Clear Collections
+    ==========================
+    */
+
     this.mediaSession.peerConnections.clear();
 
     this.mediaSession.remoteStreams.clear();
 
     this.pendingCandidates.clear();
+
+    /*
+    ==========================
+    Remove Callbacks
+    ==========================
+    */
+
+    this.callbacks = {};
 
 }
 

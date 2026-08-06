@@ -1,4 +1,4 @@
-const { OtpCode } = require('../../../models');
+const { User, OtpCode } = require('../../../models');
 const userService = require('../users/user.service');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -11,44 +11,58 @@ class AuthService {
 
   async sendOtp(data) {
 
-    const { mobile } = data;
+        const { mobile } = data;
 
-    const now = new Date();
-
-    const otp = await OtpCode.findOne({
-        where: { mobile }
-    });
-
-    if (otp && otp.resendAt > now) {
-        throw new AppError(
-            429,
-            'لطفاً کمی صبر کنید و دوباره تلاش کنید.'
+        const user = await userService.findByMobile(
+            mobile
         );
+
+        const isNewUser = !user;
+
+        const now = new Date();
+
+        const otp = await OtpCode.findOne({
+            where: {
+                mobile
+            }
+        });
+
+        if (otp && otp.resendAt > now) {
+            throw new AppError(
+                429,
+                'لطفاً کمی صبر کنید و دوباره تلاش کنید.'
+            );
+        }
+
+        const code = Math.floor(
+            10000 + Math.random() * 90000
+        ).toString();
+
+        const hashedCode = await bcrypt.hash(code, 10);
+
+        const resendAt = new Date(
+            now.getTime() + 60 * 1000
+        );
+
+        const expiresAt = new Date(
+            now.getTime() + 2 * 60 * 1000
+        );
+
+        await OtpCode.upsert({
+            mobile,
+            code: hashedCode,
+            attempts: 0,
+            resendAt,
+            expiresAt
+        });
+
+        console.log(`OTP for ${mobile}: ${code}`);
+
+        return {
+            isNewUser
+        };
+
     }
-
-    const code = Math.floor(
-        10000 + Math.random() * 90000
-    ).toString();
-
-    const hashedCode = await bcrypt.hash(code, 10);
-
-    const resendAt = new Date(now.getTime() + 60 * 1000);
-
-    const expiresAt = new Date(now.getTime() + 2 * 60 * 1000);
-
-    await OtpCode.upsert({
-        mobile,
-        code: hashedCode,
-        attempts: 0,
-        resendAt,
-        expiresAt
-    });
-
-    console.log(`OTP for ${mobile}: ${code}`);
-
-    return;
-
-}
 
 
   async verifyOtp(data) {
@@ -103,11 +117,16 @@ class AuthService {
 
     }
 
-    let user = await userService.findByMobile(mobile);
+    let user = await userService.findByMobile(
+        mobile
+    );
 
     if (!user) {
 
-        if (!firstName || !lastName) {
+        if (
+            !firstName ||
+            !lastName
+        ) {
             throw new AppError(
                 400,
                 'نام و نام خانوادگی برای ثبت‌نام الزامی است.'
@@ -125,7 +144,8 @@ class AuthService {
     const token = jwt.sign(
         {
             id: user.id,
-            mobile: user.mobile
+            mobile: user.mobile,
+            role: user.role
         },
         process.env.JWT_SECRET,
         {
@@ -136,13 +156,23 @@ class AuthService {
     await otp.destroy();
 
     return {
+
         token,
+
         user: {
+
             id: user.id,
+
             mobile: user.mobile,
+
             firstName: user.firstName,
-            lastName: user.lastName
+
+            lastName: user.lastName,
+
+            role: user.role
+
         }
+
     };
 
 }

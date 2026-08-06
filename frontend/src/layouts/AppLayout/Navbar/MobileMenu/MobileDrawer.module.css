@@ -1,0 +1,161 @@
+.overlay{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.35);
+
+    opacity:0;
+
+    visibility:hidden;
+
+    transition:.3s;
+
+    z-index:99;
+
+}
+
+.show{
+
+    opacity:1;
+
+    visibility:visible;
+
+}
+
+.drawer{
+
+    position:fixed;
+
+    top:0;
+
+    right:-320px;
+
+    width:300px;
+
+    max-width:80vw;
+
+    height:100vh;
+
+    background:#fff;
+
+    transition:.3s;
+
+    z-index:100;
+
+    display:flex;
+
+    flex-direction:column;
+
+    box-shadow:-10px 0 25px rgba(0,0,0,.12);
+
+}
+
+.open{
+
+    right:0;
+
+}
+
+.header{
+
+    padding:28px 24px;
+
+    background:#178e49;
+
+    color:white;
+
+}
+
+.header h2{
+
+    margin:0;
+
+}
+
+nav{
+
+    display:flex;
+
+    flex-direction:column;
+
+    padding:20px;
+
+}
+
+.link{
+
+    padding:14px 0;
+
+    text-decoration:none;
+
+    color:#333;
+
+    border-bottom:1px solid #eee;
+
+}
+
+.active{
+
+    color:#178e49;
+
+    font-weight:700;
+
+}
+
+.footer{
+
+    margin-top:auto;
+
+    padding:20px;
+
+}
+
+.login{
+
+    display:block;
+
+    text-align:center;
+
+    background:#178e49;
+
+    color:white;
+
+    text-decoration:none;
+
+    padding:12px;
+
+    border-radius:12px;
+
+}
+
+.userName{
+
+    padding:14px 18px;
+
+    font-weight:700;
+
+    color:#178e49;
+
+}
+
+.logout{
+
+    width:100%;
+
+    border:none;
+
+    background:#d32f2f;
+
+    color:white;
+
+    padding:12px;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    margin-top:12px;
+
+}

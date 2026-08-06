@@ -1,0 +1,29 @@
+.button{
+
+    display:none;
+
+    border:none;
+
+    background:none;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:2rem;
+
+}
+
+@media(max-width:900px){
+
+    .button{
+
+        display:flex;
+
+        align-items:center;
+
+        justify-content:center;
+
+    }
+
+}

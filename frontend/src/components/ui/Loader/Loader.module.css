@@ -1,0 +1,23 @@
+.loader{
+
+    display:inline-block;
+
+    border:3px solid currentColor;
+
+    border-right-color:transparent;
+
+    border-radius:50%;
+
+    animation:spin .8s linear infinite;
+
+}
+
+@keyframes spin{
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}

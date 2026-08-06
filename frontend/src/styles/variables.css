@@ -1,34 +1,78 @@
+
 :root{
 
-    --primary:#2EAF66;
-    --primary-dark:#23864E;
+    /* Colors */
 
-    --secondary:#1B1B1B;
+    --primary:#178E49;
+    --primary-dark:#0F6B36;
+    --primary-light:#EAF8F0;
 
-    --background:#F4F6F8;
+    --secondary:#49C978;
+
+    --background:#FAFBFC;
 
     --surface:#FFFFFF;
 
-    --border:#E2E8F0;
+    --text:#222222;
 
-    --text:#202124;
+    --text-secondary:#666666;
 
-    --text-light:#666666;
+    --border:#E5E7EB;
 
-    --danger:#E53935;
+    --danger:#DC2626;
 
-    --warning:#FFB300;
+    --warning:#F59E0B;
 
-    --success:#43A047;
+    --success:#16A34A;
 
-    --shadow:
+    /* Radius */
 
-        0 2px 8px rgba(0,0,0,.08);
+    --radius-sm:8px;
+    --radius-md:14px;
+    --radius-lg:22px;
+    --radius-xl:32px;
 
-    --radius:12px;
+    /* Shadow */
 
-    --transition:.25s;
+    --shadow-sm:0 4px 12px rgba(0,0,0,.06);
+    --shadow-md:0 10px 30px rgba(0,0,0,.10);
+    --shadow-lg:0 18px 50px rgba(0,0,0,.14);
 
-    --navbar-height:60px;
+    /* Transition */
+
+    --transition-fast:.2s;
+    --transition:.3s;
+    --transition-slow:.45s;
+
+    /* Layout */
+
+    --navbar-height:72px;
+
+    --container-width:1280px;
+
+     /* ==========================
+       Typography
+    ========================== */
+
+    --font-family: 'Vazir', sans-serif;
+
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-md: 16px;
+    --font-lg: 18px;
+    --font-xl: 24px;
+    --font-xxl: 32px;
+
+    /* ==========================
+       Spacing
+    ========================== */
+
+    --space-xs:4px;
+    --space-sm:8px;
+    --space-md:16px;
+    --space-lg:24px;
+    --space-xl:32px;
+    --space-xxl:48px;
+
 
 }

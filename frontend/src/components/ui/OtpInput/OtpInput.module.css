@@ -1,0 +1,57 @@
+.container{
+
+     display: flex;
+
+    justify-content: center;
+
+    gap: 10px;
+
+    direction: ltr;
+
+}
+
+.input{
+
+    direction: ltr;
+
+    width:52px;
+
+    height:58px;
+
+    border-radius:14px;
+
+    border:1px solid #d7e7d7;
+
+    background:white;
+
+    text-align:center;
+
+    font-size:24px;
+
+    font-family:vazir;
+
+    transition:.2s;
+
+}
+
+.input:focus{
+
+    outline:none;
+
+    border-color:#38a169;
+
+    box-shadow:0 0 0 4px rgba(56,161,105,.15);
+
+}
+
+.error{
+
+    color:#e53e3e;
+
+    text-align:center;
+
+    margin-top:8px;
+
+    font-size:14px;
+
+}

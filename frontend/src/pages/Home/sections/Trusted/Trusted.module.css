@@ -1,0 +1,61 @@
+.section{
+
+    padding:70px 0;
+
+    text-align:center;
+
+     background:var(--surface);
+
+}
+
+.section h2{
+
+    margin-bottom:48px;
+
+    font-size:2rem;
+
+}
+
+.items{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:60px;
+
+    flex-wrap:wrap;
+
+}
+
+.item{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    gap:12px;
+
+}
+
+.item span{
+
+    font-size:38px;
+
+    color:var(--primary);
+
+}
+
+.item h3{
+
+    font-size:2rem;
+
+}
+
+.item p{
+
+    color:var(--text-secondary);
+
+}

@@ -1,0 +1,27 @@
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    text-decoration:none;
+
+    flex-shrink:0;
+
+}
+
+.logo img{
+
+    width:160px;
+
+    transition:.3s;
+
+}
+
+.small{
+
+    width:145px !important;
+
+    height:38px;
+
+}

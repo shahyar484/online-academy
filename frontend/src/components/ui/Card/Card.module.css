@@ -1,0 +1,23 @@
+.card{
+
+    animation:fadeUp .45s ease;
+
+    background:var(--surface);
+
+    border-radius:var(--radius-lg);
+
+    box-shadow:var(--shadow-lg);
+
+    padding:32px;
+
+    transition:transform .25s ease,
+           box-shadow .25s ease;
+
+}
+.card:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:0 16px 40px rgba(0,0,0,.08);
+
+}
